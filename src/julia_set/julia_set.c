@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 JuliaSetArgs* prepare_start_arguments() {
-  struct JuliaSetArgs* args;
+  JuliaSetArgs* args;
   args = malloc(sizeof(JuliaSetArgs));
   args->width = WIDTH;
   args->height = HEIGHT;

@@ -2,7 +2,7 @@
 #ifndef _JULIASET_H
 #define _JULIASET_H
 
-typedef struct JuliaSetArgs {
+typedef struct  {
   int width;
   int height;
   double real_centre;
