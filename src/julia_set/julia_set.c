@@ -1,10 +1,8 @@
 #include "julia_set.h"
-#include "constants.h"
-#include <stdlib.h>
 
-JuliaSetArgs* prepare_start_arguments() {
-  JuliaSetArgs* args;
-  args = malloc(sizeof(JuliaSetArgs));
+#include "src/constants.h"
+
+void init_julia_set_arguments(struct JuliaSetArgs* args) {
   args->width = WIDTH;
   args->height = HEIGHT;
   args->real_centre = START_REAL_CENTRE;
@@ -13,5 +11,4 @@ JuliaSetArgs* prepare_start_arguments() {
   args->c_imag = START_C_IMAG;
   args->zoom = START_ZOOM;
   args->radius = RADIUS;
-  return args;
 }

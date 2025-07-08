@@ -1,6 +1,7 @@
 #ifndef _CONSTANTS_H
 #define _CONSTANTS_H
 
+#define WINDOW_TITLE "Interactive Julia Set"
 #define WIDTH 1024
 #define HEIGHT 1024
 #define START_REAL_CENTRE (WIDTH / 2)
