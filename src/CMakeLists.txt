@@ -1,4 +1,4 @@
-enable_language(C ASM_NASM)
+enable_language(ASM_NASM)
 
 set(assembly_file julia_set/julia_set.s)
 set(JuliaSetSources julia_set/julia_set.c ${assembly_file})
