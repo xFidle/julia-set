@@ -1,6 +1,6 @@
 #include "julia_set.h"
 
-#include "src/constants.h"
+#include "constants.h"
 
 void init_julia_set_arguments(struct JuliaSetArgs* args) {
   args->width = WIDTH;

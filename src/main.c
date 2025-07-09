@@ -1,4 +1,4 @@
-#include "src/app/app.h"
+#include "app/app.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +10,7 @@ int main(void) {
     app_run(&app);
     exit_status = EXIT_SUCCESS;
   }
+  app_free(&app);
   return exit_status;
   // struct RendererContext renderer_context;
   // struct JuliaSetArgs args;

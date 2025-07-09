@@ -1,20 +1,25 @@
 #include "app.h"
 
 #include "src/julia_set/julia_set.h"
-#include "src/constants.h"
+#include "constants.h"
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 
+static bool allocate_pixel_array(struct App* app, int window_width, int window_height, int color_size);
+
 bool app_init(struct App* app) {
-  int pixel_array_size = WIDTH * HEIGHT * COLOR_BYTES_SIZE;
-  uint8_t* pixel_array = malloc(pixel_array_size);
-  app->pixel_array = pixel_array;
+  if (!allocate_pixel_array(app, WIDTH, HEIGHT, COLOR_BYTES_SIZE)) {
+    fprintf(stderr, "Couldn't allocate memory for pixel array");
+    return false;
+  }
   if (!SDL_Init(SDL_INIT_VIDEO)) {
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "couldn't initialize sdl3: %s", SDL_GetError());
-    return NULL;
+    fprintf(stderr, "Couldn't initialize sdl3: %s", SDL_GetError());
+    return false;
   }
   if (!SDL_CreateWindowAndRenderer(WINDOW_TITLE, WIDTH, HEIGHT, SDL_WINDOW_OPENGL, &app->window, &app->renderer)) {
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "couldn't initialize window or renderer: %s", SDL_GetError());
-    return NULL;
+    fprintf(stderr, "Couldn't initialize window or renderer: %s", SDL_GetError());
+    return false;
   }
   return app;
 }
@@ -36,9 +41,22 @@ void app_free(struct App* app) {
     SDL_DestroyTexture(app->texture);
     app->texture = NULL;
   }
-  free(app->pixel_array);
+  if (app->pixel_array != NULL) {
+    free(app->pixel_array);
+    app->pixel_array = NULL;
+  }
   SDL_Quit();
 }
 
 void app_run(struct App* app) {
+}
+
+bool allocate_pixel_array(struct App* app, int window_width, int window_height, int color_size) {
+  int pixel_array_size = WIDTH * HEIGHT * COLOR_BYTES_SIZE;
+  uint8_t* pixel_array = malloc(pixel_array_size);
+  if (pixel_array == NULL) {
+    return false;
+  }
+  app->pixel_array = pixel_array;
+  return true;
 }
