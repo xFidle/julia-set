@@ -1,7 +1,7 @@
-#include "app/app.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "app/app.h"
 
 int main(void) {
   bool exit_status = EXIT_FAILURE;

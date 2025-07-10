@@ -1,8 +1,7 @@
 #include "julia_set.h"
-
 #include "constants.h"
 
-void init_julia_set_arguments(struct JuliaSetArgs* args) {
+void julia_set_args_init(struct JuliaSetArgs* args) {
   args->width = WIDTH;
   args->height = HEIGHT;
   args->real_centre = START_REAL_CENTRE;
