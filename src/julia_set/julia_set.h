@@ -2,7 +2,6 @@
 #define _JULIASET_H
 
 #include <stdint.h>
-#include <stdlib.h>
 
 struct JuliaSetArgs {
   int width;
@@ -15,7 +14,7 @@ struct JuliaSetArgs {
   double radius;
 };
 
-void julia_set_args_init(struct JuliaSetArgs* julia_set_args);
-void julia_set(struct JuliaSetArgs* julia_set_args, uint8_t* pixel_array);
+void julia_set_args_init(struct JuliaSetArgs* args);
+void* julia_set(void* julia_set_thread_args);
 
 #endif

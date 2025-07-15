@@ -1,4 +1,5 @@
 include_directories(${CMAKE_SOURCE_DIR})
+set(CMAKE_C_CLANG_TIDY "clang-tidy;-checks=bugprone-*,clang-analyzer-*,redability-*")
 
 add_subdirectory(julia_set)
 add_subdirectory(app)

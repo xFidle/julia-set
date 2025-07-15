@@ -8,17 +8,14 @@
 struct App {
   SDL_Window* window;
   SDL_Renderer* renderer;
-  SDL_Surface* surface;
   SDL_Texture* texture;
   SDL_Event event;
   uint8_t* pixel_array;
-  struct JuliaSetArgs* args;
+  struct JuliaSetArgs* julia_set_args;
   bool is_running;
 };
 
 bool app_init(struct App* app);
-void app_events(struct App* app);
-void app_draw(struct App* app);
 void app_run(struct App* app);
 void app_free(struct App* app);
 
