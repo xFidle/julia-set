@@ -78,10 +78,46 @@ void app_events(struct App* app) {
             app->is_running = false;
             break;
           case SDLK_UP:
+          case SDLK_K:
             app->julia_set_args->c_real += 0.005;
             update_required = true;
             break;
+          case SDLK_DOWN:
+          case SDLK_J:
+            app->julia_set_args->c_real -= 0.005;
+            update_required = true;
+            break;
+          case SDLK_RIGHT:
+          case SDLK_L:
+            app->julia_set_args->c_imag += 0.005;
+            update_required = true;
+            break;
+          case SDLK_LEFT:
+          case SDLK_H:
+            app->julia_set_args->c_imag -= 0.005;
+            update_required = true;
+            break;
+          case SDLK_D:
+            app->julia_set_args->real_centre += 5.0;
+            update_required = true;
+            break;
+          case SDLK_A:
+            app->julia_set_args->real_centre -= 5.0;
+            update_required = true;
+            break;
+          case SDLK_W:
+            app->julia_set_args->imag_centre += 5.0;
+            update_required = true;
+            break;
+          case SDLK_S:
+            app->julia_set_args->imag_centre -= 5.0;
+            update_required = true;
+            break;
+          default:
+            break;
         }
+      default:
+        break;
     }
   }
   if (update_required) { set_new_texture(app); }
@@ -118,7 +154,7 @@ struct JuliaSetThreadArgs {
 };
 
 bool set_new_texture(struct App* app) {
-  int n_threads = SDL_GetNumLogicalCPUCores();
+  int n_threads = 1;
   pthread_t threads[n_threads];
   struct JuliaSetThreadArgs thread_args[n_threads];
   int rows_per_thread = HEIGHT / n_threads;
