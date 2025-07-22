@@ -27,7 +27,7 @@ extract_julia_set_args:
     mov             r9d,        [rax+4]             ; height
     vbroadcastsd    ymm1,       [rax+8]             ; real_centre
     vbroadcastsd    ymm2,       [rax+16]            ; imag_centre
-    vbroadcastsd    ymm3,       [rax+25]            ; c_real
+    vbroadcastsd    ymm3,       [rax+24]            ; c_real
     vbroadcastsd    ymm4,       [rax+32]            ; c_imag
     vbroadcastsd    ymm5,       [rax+40]            ; zoom
     vbroadcastsd    ymm6,       [rax+48]            ; radius
@@ -62,7 +62,7 @@ pop_from_stack:
 
 ; iterations counter 
 new_pixel:
-    mov             eax,        255 
+    mov             eax,        256 
     vpxord          xmm11,      xmm11
     vpbroadcastd    xmm11,      eax
 
@@ -106,17 +106,14 @@ increase_z:
     vmulpd          ymm1,       ymm1
     vsubpd          ymm0,       ymm1
     vaddpd          ymm0,       ymm3
-    vandpd          ymm0,       ymm2,       ymm0
-    vandnpd         ymm1,       ymm2,       ymm12 
-    vorpd           ymm12,      ymm0,       ymm1
 
-    vmovdqa         ymm0,       ymm14
-    vmulpd          ymm0,       ymm12
-    vmulpd          ymm0,       ymm13 
-    vaddpd          ymm0,       ymm4
-    vandpd          ymm0,       ymm2,       ymm0
-    vandnpd         ymm1,       ymm2,       ymm13
-    vorpd           ymm13,      ymm0,       ymm1
+    vmovdqa         ymm1,       ymm14
+    vmulpd          ymm1,       ymm12
+    vmulpd          ymm1,       ymm13 
+    vaddpd          ymm1,       ymm4
+
+    vblendvpd       ymm12,      ymm12,      ymm0,       ymm2
+    vblendvpd       ymm13,      ymm13,      ymm1,       ymm2
 
 dec_iter_counter:
     vextractf128    xmm0,       ymm2,       1
@@ -124,18 +121,16 @@ dec_iter_counter:
     mov             eax,        1
     vpbroadcastd    xmm1,       eax
     vpsubd          xmm1,       xmm11,      xmm1 
-    vpandd          xmm1,       xmm0
-    vpandnd         xmm0,       xmm0,       xmm11 
-    vpord           xmm11,      xmm0,       xmm1 
+    vblendvps       xmm11,      xmm11,      xmm1,       xmm0
 
 check_condition:
     vmovdqa         ymm0,       ymm12
-    vmovdqa         ymm1,       ymm13
     vmulpd          ymm0,       ymm0
+    vmovdqa         ymm1,       ymm13
     vmulpd          ymm1,       ymm1
     vaddpd          ymm0,       ymm1
     vcmppd          ymm2,       ymm0,       ymm15,      2       
-    vptest          ymm2,       ymm2
+    vtestpd         ymm2,       ymm2
     jnz             check_iter_counter
 
 ; color = color_iterations
@@ -150,7 +145,7 @@ prep_colors:
     vpslld          xmm0,       8
     vpord           xmm0,       xmm1
 
-; pixel_addres = 4 * ((height - row) * width + column)
+; pixel_addres = 4 * ((height - 1 - row) * width + column)
 store_colors:
     mov             rax,        r9
     dec             rax
