@@ -131,7 +131,7 @@ void app_draw(struct App* app) {
 
 
 bool allocate_pixel_array(struct App* app) {
-  int pixel_array_size = WIDTH * HEIGHT * COLOR_BYTES_SIZE;
+  int pixel_array_size = WIDTH * HEIGHT * BYTES_PER_COLOR;
   uint8_t* pixel_array = malloc(pixel_array_size);
   if (pixel_array == NULL) { return false; }
   app->pixel_array = pixel_array;
@@ -166,5 +166,5 @@ bool set_new_texture(struct App* app) {
     pthread_create(&threads[i], NULL, julia_set, &thread_args[i]);
   }
   for (int i = 0; i < n_threads; ++i) { pthread_join(threads[i], NULL); }
-  return SDL_UpdateTexture(app->texture, NULL, app->pixel_array, WIDTH * COLOR_BYTES_SIZE);
+  return SDL_UpdateTexture(app->texture, NULL, app->pixel_array, WIDTH * BYTES_PER_COLOR);
 }

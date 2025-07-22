@@ -10,6 +10,6 @@
 #define START_C_IMAG -0.2321
 #define START_ZOOM 1.0
 #define RADIUS 2.0
-#define COLOR_BYTES_SIZE 4
+#define BYTES_PER_COLOR 4
 
 #endif
