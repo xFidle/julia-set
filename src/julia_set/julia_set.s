@@ -40,19 +40,11 @@ prep:
     vcvtsi2sd       xmm0,       r9d                 ; double height
     vbroadcastsd    ymm8,       xmm0
 
-setup_columns:
-    mov             eax,        0x03020100
-    vmovd           xmm0,       eax
-    vpmovzxbd       xmm0,       xmm0
-    mov             eax,        r8d
-    dec             eax
-    vpbroadcastd    xmm9,       eax
-    vpsubd          xmm9,       xmm0
-
-setup_rows:
-    mov             eax,        r9d
-    dec             eax
-    vpbroadcastd    xmm10,      eax
+prep_loop:
+    mov             r10d,       r8d
+    sub             r10d,       4
+    mov             r11d,       ecx
+    dec             r11d
     jmp             new_pixel
 
 pop_from_stack:
@@ -68,7 +60,12 @@ new_pixel:
 
 ; z_real = (column - real_centre) * (2 * radius / width) * zoom
 calculate_real:
-    vcvtdq2pd       ymm12,      xmm9
+    vpbroadcastd    xmm0,       r10d
+    mov             eax,        0x00010203
+    vmovd           xmm12,      eax
+    vpmovzxbd       xmm12,      xmm1
+    vpaddd          xmm0,       xmm12
+    vcvtdq2pd       ymm12,      xmm0
     vsubpd          ymm12,      ymm1
     vmulpd          ymm12,      ymm14
     vmulpd          ymm12,      ymm6
@@ -77,7 +74,8 @@ calculate_real:
 
 ; z_imag = (row - imag_centre) * (2 * radius / height) * zoom
 calculate_imag:
-    vcvtdq2pd       ymm13,      xmm10
+    vpbroadcastd    xmm0,       r11d
+    vcvtdq2pd       ymm13,      xmm0
     vsubpd          ymm13,      ymm2
     vmulpd          ymm13,      ymm14
     vmulpd          ymm13,      ymm6
@@ -147,37 +145,44 @@ prep_colors:
 
 ; pixel_addres = 4 * ((height - 1 - row) * width + column)
 store_colors:
-    mov             rax,        r9
-    dec             rax
-    vpextrd         rbx,        xmm10,      3       ; lowest_row 
-    sub             rax,        rbx
-    imul            rax,        r8
-    vpextrd         rbx,        xmm9,       3       ; lowest_column
-    add             rax,        rbx
-    imul            rax,        4
-    vmovdqu         [rsi+rax],  xmm0
+    mov             eax,        r9d
+    dec             eax
+    sub             eax,        r11d
+    imul            eax,        r8d
+    add             eax,        r10d
+    imul            eax,        4
+    vmovdqa         [rsi+rax],  xmm0
 
-set_next_columns:
-    mov             eax,        4
-    vpbroadcastd    xmm0,       eax
-    vpsubd          xmm0,       xmm9,       xmm0
-    vpbroadcastd    xmm1,       r8d
-    vpaddd          xmm1,       xmm0
-    vpxord          xmm2,       xmm2
-    vpcmpgtd        xmm2,       xmm2,       xmm0        ; mask (columns that are lower than 0 are masked)
-    vblendvps       xmm9,       xmm0,       xmm1,       xmm2
+next_pixels:
+    sub             r10d,       4
+    cmp             r10d,       0
+    jge             pop_from_stack
+    mov             r10d,       r8d
+    sub             r10d,       4
+    sub             r11d,       1
+    cmp             r11d,       edx
+    jge             pop_from_stack
 
-set_next_rows:
-    mov             eax,        1
-    vpbroadcastd    xmm0,       eax
-    vpsubd          xmm0,       xmm10,      xmm0
-    vblendvps       xmm10,      xmm10,      xmm0,       xmm2 
-    vpbroadcastd    xmm0,       edx
-    vpcmpgtd        xmm0,       xmm10,      xmm0
-    vpcmpeqd        xmm1,       xmm0,       xmm10
-    vpxord          xmm0,       xmm1
-    vptest          xmm0,       xmm0
-    jnz             pop_from_stack
+; set_next_columns:
+;     mov             eax,        4
+;     vpbroadcastd    xmm0,       eax
+;     vpsubd          xmm0,       xmm9,       xmm0
+;     vpbroadcastd    xmm1,       r8d
+;     vpaddd          xmm1,       xmm0
+;     vpxord          xmm2,       xmm2
+;     vpcmpgtd        xmm2,       xmm2,       xmm0        ; mask (columns that are lower than 0 are masked)
+;     vblendvps       xmm9,       xmm0,       xmm1,       xmm2
+
+; set_next_rows:
+;     mov             eax,        1
+;     vpbroadcastd    xmm0,       eax
+;     vpsubd          xmm0,       xmm10,      xmm0
+;     vblendvps       xmm10,      xmm10,      xmm0,       xmm2 
+;     vpbroadcastd    xmm0,       edx
+;     vpcmpgtd        xmm0,       xmm10,      xmm0
+;     vpcmpeqd        xmm1,       xmm0,       xmm10
+;     vpxord          xmm0,       xmm1
+;     vptest          xmm0,       xmm0
 
 end:
     pop         rbx

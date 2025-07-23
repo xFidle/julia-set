@@ -30,6 +30,7 @@ bool app_init(struct App* app) {
     fprintf(stderr, "Couldn't create SDL3 texture: %s", SDL_GetError());
     return false;
   }
+  SDL_SetTextureScaleMode(app->texture, SDL_SCALEMODE_NEAREST);
   return true;
 }
 
