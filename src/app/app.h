@@ -1,7 +1,7 @@
 #ifndef _APP_H
 #define _APP_H
 
-#include "src/julia_set/julia_set.h"
+#include "julia_set.h"
 #include <SDL3/SDL.h>
 #include <stdint.h>
 
