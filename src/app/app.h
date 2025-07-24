@@ -15,8 +15,8 @@ struct App {
   bool is_running;
 };
 
-bool app_init(struct App* app);
-void app_run(struct App* app);
-void app_free(struct App* app);
+bool app_init(struct App* a);
+void app_run(struct App* a);
+void app_free(struct App* a);
 
 #endif
