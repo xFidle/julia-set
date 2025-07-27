@@ -1,20 +1,25 @@
 #include "app.h"
 #include "constants.h"
 #include "julia_set.h"
+#include "queue.h"
+#include "tpool.h"
+
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-static void app_events(struct App* a);
-static void app_draw(struct App* a);
-static bool allocate_pixel_array(struct App* a);
-static bool allocate_julia_set_args(struct App* a);
-static bool set_new_texture(struct App* a);
+void app_events(struct App* a);
+void app_draw(struct App* a);
+bool app_set_new_texture(struct App* a);
+uint8_t* pixel_array_new(void);
 
 bool app_init(struct App* a) {
-  if (!allocate_pixel_array(a) || !allocate_julia_set_args(a)) {
-    fprintf(stderr, "Couldn't allocate needed memory for pixel array");
+  a->pixel_array = pixel_array_new();
+  a->julia_set_args = julia_set_args_new();
+  a->tpool = tpool_new((struct TPoolConfig) {.n_threads = SDL_GetNumLogicalCPUCores(), .queue_size = SDL_GetNumLogicalCPUCores()});
+  if (a->pixel_array == NULL || a->julia_set_args == NULL || a->tpool == NULL) {
+    fprintf(stderr, "Couldn't allocate memory for needed structs (tpool, pixel_array, julia_set_args)");
     return false;
   }
   if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -23,6 +28,10 @@ bool app_init(struct App* a) {
   }
   if (!SDL_CreateWindowAndRenderer(WINDOW_TITLE, WIDTH, HEIGHT, SDL_WINDOW_OPENGL, &a->window, &a->renderer)) {
     fprintf(stderr, "Couldn't initialize window or renderer: %s", SDL_GetError());
+    return false;
+  }
+  if (!SDL_SetRenderVSync(a->renderer, SDL_RENDERER_VSYNC_ADAPTIVE)) {
+    fprintf(stderr, "Couldn't set VSync: %s", SDL_GetError());
     return false;
   }
   a->texture = SDL_CreateTexture(a->renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
@@ -34,7 +43,7 @@ bool app_init(struct App* a) {
 }
 
 void app_run(struct App* a) {
-  set_new_texture(a);
+  app_set_new_texture(a);
   while (a->is_running) {
     app_events(a);
     app_draw(a);
@@ -42,26 +51,12 @@ void app_run(struct App* a) {
 }
 
 void app_free(struct App* a) {
-  if (a->window != NULL) {
-    SDL_DestroyWindow(a->window);
-    a->window = NULL;
-  }
-  if (a->renderer != NULL) {
-    SDL_DestroyRenderer(a->renderer);
-    a->renderer = NULL;
-  }
-  if (a->texture != NULL) {
-    SDL_DestroyTexture(a->texture);
-    a->texture = NULL;
-  }
-  if (a->pixel_array != NULL) {
-    free(a->pixel_array);
-    a->pixel_array = NULL;
-  }
-  if (a->julia_set_args != NULL) {
-    free(a->julia_set_args);
-    a->julia_set_args = NULL;
-  }
+  if (a->window != NULL) { SDL_DestroyWindow(a->window); }
+  if (a->renderer != NULL) { SDL_DestroyRenderer(a->renderer); }
+  if (a->texture != NULL) { SDL_DestroyTexture(a->texture); }
+  if (a->pixel_array != NULL) { free(a->pixel_array); }
+  if (a->julia_set_args != NULL) { free(a->julia_set_args); }
+  if (a->tpool != NULL) { tpool_free(a->tpool); }
   SDL_Quit();
 }
 
@@ -120,7 +115,7 @@ void app_events(struct App* a) {
         break;
     }
   }
-  if (update_required) { set_new_texture(a); }
+  if (update_required) { app_set_new_texture(a); }
 }
 
 void app_draw(struct App* a) {
@@ -129,21 +124,10 @@ void app_draw(struct App* a) {
   SDL_RenderPresent(a->renderer);
 }
 
-
-bool allocate_pixel_array(struct App* a) {
+uint8_t* pixel_array_new(void) {
   int pixel_array_size = WIDTH * HEIGHT * BYTES_PER_COLOR;
   uint8_t* pixel_array = aligned_alloc(8, pixel_array_size);
-  if (pixel_array == NULL) { return false; }
-  a->pixel_array = pixel_array;
-  return true;
-}
-
-bool allocate_julia_set_args(struct App* a) {
-  struct JuliaSetArgs* args = malloc(sizeof(struct JuliaSetArgs));
-  if (args == NULL) { return false; }
-  julia_set_args_init(args);
-  a->julia_set_args = args;
-  return true;
+  return pixel_array;
 }
 
 struct JuliaSetThreadArgs {
@@ -153,18 +137,43 @@ struct JuliaSetThreadArgs {
   int last_row;
 };
 
-bool set_new_texture(struct App* a) {
-  int n_threads = SDL_GetNumLogicalCPUCores();
-  pthread_t threads[n_threads];
-  struct JuliaSetThreadArgs thread_args[n_threads];
-  int rows_per_thread = HEIGHT / n_threads;
-  for (int i = 0; i < n_threads; ++i) {
-    thread_args[i].julia_set_args = a->julia_set_args;
-    thread_args[i].pixel_array = a->pixel_array;
-    thread_args[i].first_row = i * rows_per_thread;
-    thread_args[i].last_row = (i == n_threads - 1) ? HEIGHT : (i + 1) * rows_per_thread + 1;
-    pthread_create(&threads[i], NULL, julia_set, &thread_args[i]);
+void init_julia_set_tasks(struct App* a, struct Task tasks[], struct JuliaSetThreadArgs args[], int n_tasks) {
+  int rows_per_thread = HEIGHT / n_tasks;
+  for (int i = 0; i < n_tasks; ++i) {
+    args[i] = (struct JuliaSetThreadArgs) {
+      .julia_set_args = a->julia_set_args,
+     .pixel_array = a->pixel_array,
+     .first_row = i * rows_per_thread,
+     .last_row = (i == n_tasks - 1) ? HEIGHT : (i + 1) * rows_per_thread
+    };
+    tasks[i].args = (void*) &args[i];
+    tasks[i].function = &julia_set;
+    tasks[i].is_finished = false;
+    queue_enqueue(a->tpool->task_queue, &tasks[i]);
   }
-  for (int i = 0; i < n_threads; ++i) { pthread_join(threads[i], NULL); }
+}
+
+void wait_for_tasks_finish(struct App* a, struct Task tasks[], int n_tasks) {
+  bool all_tasks_done = false;
+  pthread_mutex_lock(&a->tpool->mutex);
+  while (!all_tasks_done) {
+    pthread_cond_wait(&a->tpool->cond, &a->tpool->mutex);
+    for (int i = 0; i < n_tasks; ++i) {
+      if (!tasks[i].is_finished) {
+        all_tasks_done = false;
+        break;
+      }
+      all_tasks_done = true;
+    }
+  }
+  pthread_mutex_unlock(&a->tpool->mutex);
+}
+
+bool app_set_new_texture(struct App* a) {
+  int n_threads = a->tpool->n_threads;
+  struct Task tasks[n_threads];
+  struct JuliaSetThreadArgs args[n_threads];
+  init_julia_set_tasks(a, tasks, args, n_threads);
+  wait_for_tasks_finish(a, tasks, n_threads);
   return SDL_UpdateTexture(a->texture, NULL, a->pixel_array, WIDTH * BYTES_PER_COLOR);
 }

@@ -2,6 +2,8 @@
 #define _APP_H
 
 #include "julia_set.h"
+#include "tpool.h"
+
 #include <SDL3/SDL.h>
 #include <stdint.h>
 
@@ -12,6 +14,7 @@ struct App {
   SDL_Event event;
   uint8_t* pixel_array;
   struct JuliaSetArgs* julia_set_args;
+  struct TPool* tpool;
   bool is_running;
 };
 
