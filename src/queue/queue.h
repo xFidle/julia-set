@@ -5,8 +5,9 @@
 #include <stdbool.h>
 
 struct Task {
-  void (*function)(void*);
+  void* (*function)(void*);
   void* args;
+  volatile bool is_finished;
 };
 
 struct Node {
@@ -15,7 +16,6 @@ struct Node {
 };
 
 struct Node* node_new(struct Task* t);
-void node_free(struct Node* n);
 
 struct Queue {
   struct Node* head;

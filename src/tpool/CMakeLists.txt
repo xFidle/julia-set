@@ -1,0 +1,5 @@
+find_package(Threads REQUIRED)
+set(TPoolSources tpool.c)
+add_library(TPoolLib STATIC ${TPoolSources})
+target_link_libraries(TPoolLib PUBLIC QueueLib Threads::Threads)
+target_include_directories(TPoolLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
