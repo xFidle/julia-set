@@ -1,11 +1,8 @@
+; Requirements:
+; WIDTH must be divisible by 4
+
 ; Arguments passed:
 ; rdi - *thread_args
-
-section .data
-    align 32
-    two dq 2.0, 2.0, 2.0, 2.0
-    align 32
-    sq_two dq 4.0, 4.0, 4.0, 4.0
 
 section .text
 global julia_set
@@ -31,14 +28,20 @@ extract_julia_set_args:
     vbroadcastsd    ymm4,       [rax+32]            ; c_imag
     vbroadcastsd    ymm5,       [rax+40]            ; zoom
     vbroadcastsd    ymm6,       [rax+48]            ; radius
-    vmovapd         ymm14,      [rel two]
-    vmovapd         ymm15,      [rel sq_two]
 
-prep:
-    vcvtsi2sd       xmm0,       r8d                 ; double width
-    vbroadcastsd    ymm7,       xmm0           
-    vcvtsi2sd       xmm0,       r9d                 ; double height
-    vbroadcastsd    ymm8,       xmm0
+vectorize_arguments:
+    vcvtsi2sd       xmm0,       r8d
+    vbroadcastsd    ymm7,       xmm0                ; vector of widths
+    vcvtsi2sd       xmm0,       r9d
+    vbroadcastsd    ymm8,       xmm0                ; vector of heights
+
+prep_constant_numbers:
+    mov             eax,        2
+    vcvtsi2sd       xmm0,       eax
+    vbroadcastsd    ymm14,      xmm0                ; vector of 2s
+    mov             eax,        4
+    vcvtsi2sd       xmm0,       eax
+    vbroadcastsd    ymm15,      xmm0                ; vector of 4s
 
 prep_loop:
     mov             r10d,       r8d
@@ -52,49 +55,60 @@ pop_from_stack:
     vmovapd         ymm2,       [rsp+32]
     add             rsp,        64
 
-; iterations counter 
+; iterations counter
 new_pixel:
     mov             eax,        256 
     vpxord          xmm11,      xmm11
     vpbroadcastd    xmm11,      eax
 
-; z_real = (column - real_centre) * (2 * radius / width) * zoom
+; real_scale = (2 * radius / width) * zoom
+; z_real = real_centre + (column - width / 2) * real_scale
 calculate_real:
-    vpbroadcastd    xmm0,       r10d
-    mov             eax,        0x00010203
-    vmovd           xmm12,      eax
-    vpmovzxbd       xmm12,      xmm1
-    vpaddd          xmm0,       xmm12
-    vcvtdq2pd       ymm12,      xmm0
-    vsubpd          ymm12,      ymm1
+    vpbroadcastd    xmm12,      r10d
+    mov             eax,        0x00010203   
+    vmovd           xmm0,       eax
+    vpmovzxbd       xmm0,       xmm0
+    vpaddd          xmm12,      xmm0 
+    mov             eax,        r8d
+    shr             eax,        1
+    vpbroadcastd    xmm0,       eax
+    vpsubd          xmm12,      xmm0
+    vcvtdq2pd       ymm12,      xmm12
     vmulpd          ymm12,      ymm14
     vmulpd          ymm12,      ymm6
-    vmulpd          ymm12,      ymm5
     vdivpd          ymm12,      ymm7
+    vmulpd          ymm12,      ymm5
+    vaddpd          ymm12,      ymm1
 
-; z_imag = (row - imag_centre) * (2 * radius / height) * zoom
+; imag_scale = (2 * radius / width) * zoom
+; z_imag = imag_centre + (row - height / 2) * imag_scale;
 calculate_imag:
-    vpbroadcastd    xmm0,       r11d
-    vcvtdq2pd       ymm13,      xmm0
-    vsubpd          ymm13,      ymm2
+    vpbroadcastd    xmm13,      r11d
+    mov             eax,        r9d
+    shr             eax,        1
+    vpbroadcastd    xmm0,       eax
+    vpsubd          xmm13,      xmm0
+    vcvtdq2pd       ymm13,      xmm13
     vmulpd          ymm13,      ymm14
     vmulpd          ymm13,      ymm6
-    vmulpd          ymm13,      ymm5
     vdivpd          ymm13,      ymm8
+    vmulpd          ymm13,      ymm5
+    vaddpd          ymm13,      ymm2
 
+; real_centre (ymm1) and imag_centre (ymm2) are not needed for next calculations
 push_unused_to_stack:
     sub             rsp,        64
     vmovapd         [rsp],      ymm1
     vmovapd         [rsp+32],   ymm2
 
 first_mask:
-    vpcmpeqq        ymm2,       ymm2,       ymm2
+    vpcmpeqq        ymm2,       ymm2
 
 check_iter_counter:
     vpxord          xmm0,       xmm0
-    vpcmpeqd        xmm0,       xmm11  
+    vpcmpeqd        xmm0,       xmm11
     vptest          xmm0,       xmm0
-    jnz             prep_colors
+    jnz             concat_whole_color
     
 ; z = z * z + c
 increase_z:
@@ -104,44 +118,41 @@ increase_z:
     vmulpd          ymm1,       ymm1
     vsubpd          ymm0,       ymm1
     vaddpd          ymm0,       ymm3
-
     vmovdqa         ymm1,       ymm14
     vmulpd          ymm1,       ymm12
     vmulpd          ymm1,       ymm13 
     vaddpd          ymm1,       ymm4
-
-    vblendvpd       ymm12,      ymm12,      ymm0,       ymm2
-    vblendvpd       ymm13,      ymm13,      ymm1,       ymm2
+    vblendvpd       ymm12,      ymm0,       ymm2
+    vblendvpd       ymm13,      ymm1,       ymm2
 
 dec_iter_counter:
     vextractf128    xmm0,       ymm2,       1
-    vshufps         xmm0,       xmm2,       xmm0,       0x88
+    vshufps         xmm0,       xmm2,       0x88
     mov             eax,        1
     vpbroadcastd    xmm1,       eax
-    vpsubd          xmm1,       xmm11,      xmm1 
-    vblendvps       xmm11,      xmm11,      xmm1,       xmm0
+    vpsubd          xmm1,       xmm11,      xmm1
+    vblendvps       xmm11,      xmm1,       xmm0
 
-check_condition:
+check_escape_condition:
     vmovdqa         ymm0,       ymm12
     vmulpd          ymm0,       ymm0
     vmovdqa         ymm1,       ymm13
     vmulpd          ymm1,       ymm1
     vaddpd          ymm0,       ymm1
-    vcmppd          ymm2,       ymm0,       ymm15,      2       
+    vcmppd          ymm2,       ymm0,       ymm15,      2
     vtestpd         ymm2,       ymm2
     jnz             check_iter_counter
 
-; color = color_iterations
-prep_colors:
-    mov             eax,        0xFF 
-    vpbroadcastd    xmm0,       eax
-    vmovdqa         xmm1,       xmm11        
-    vpslld          xmm0,       8   
-    vpord           xmm0,       xmm1
-    vpslld          xmm0,       8
-    vpord           xmm0,       xmm1
-    vpslld          xmm0,       8
-    vpord           xmm0,       xmm1
+concat_whole_color:
+    mov             eax,        0xFF
+    vpbroadcastd    xmm1,       eax
+    vmovdqa         xmm2,       xmm1
+    vpslld          xmm1,       8
+    vpaddd          xmm1,       xmm11
+    vpslld          xmm1,       8
+    vpaddd          xmm1,       xmm11
+    vpslld          xmm1,       8
+    vpaddd          xmm1,       xmm11
 
 ; pixel_addres = 4 * ((height - 1 - row) * width + column)
 store_colors:
@@ -151,7 +162,7 @@ store_colors:
     imul            eax,        r8d
     add             eax,        r10d
     imul            eax,        4
-    vmovdqa         [rsi+rax],  xmm0
+    vmovdqa         [rsi+rax],  xmm1
 
 next_pixels:
     sub             r10d,       4
@@ -162,27 +173,6 @@ next_pixels:
     sub             r11d,       1
     cmp             r11d,       edx
     jge             pop_from_stack
-
-; set_next_columns:
-;     mov             eax,        4
-;     vpbroadcastd    xmm0,       eax
-;     vpsubd          xmm0,       xmm9,       xmm0
-;     vpbroadcastd    xmm1,       r8d
-;     vpaddd          xmm1,       xmm0
-;     vpxord          xmm2,       xmm2
-;     vpcmpgtd        xmm2,       xmm2,       xmm0        ; mask (columns that are lower than 0 are masked)
-;     vblendvps       xmm9,       xmm0,       xmm1,       xmm2
-
-; set_next_rows:
-;     mov             eax,        1
-;     vpbroadcastd    xmm0,       eax
-;     vpsubd          xmm0,       xmm10,      xmm0
-;     vblendvps       xmm10,      xmm10,      xmm0,       xmm2 
-;     vpbroadcastd    xmm0,       edx
-;     vpcmpgtd        xmm0,       xmm10,      xmm0
-;     vpcmpeqd        xmm1,       xmm0,       xmm10
-;     vpxord          xmm0,       xmm1
-;     vptest          xmm0,       xmm0
 
 end:
     pop         rbx
