@@ -4,7 +4,7 @@
 
 int main(void) {
   int exit_status = EXIT_FAILURE;
-  struct App app;
+  struct App app = {0};
   if (app_init(&app)) {
     app_run(&app);
     exit_status = EXIT_SUCCESS;

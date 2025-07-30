@@ -11,10 +11,11 @@ struct Node* node_new(struct Task* t) {
   return node;
 }
 
-
 struct Queue* queue_new(int max_size) {
   struct Queue* q = malloc(sizeof(struct Queue));
   if (q == NULL) { return NULL; }
+  q->head = NULL;
+  q->tail = NULL;
   q->max_size = max_size;
   q->current_size = 0;
   pthread_cond_init(&q->empty, NULL);
