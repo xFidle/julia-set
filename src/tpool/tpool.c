@@ -3,8 +3,9 @@
 
 #include <pthread.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
-#define TERIMANTION_TASK NULL
+#define TERMINATION_TASK NULL
 
 struct TPool* tpool_new(struct TPoolConfig* cfg) {
   struct TPool* tp = malloc(sizeof(struct TPool));
@@ -23,14 +24,14 @@ struct TPool* tpool_new(struct TPoolConfig* cfg) {
 }
 
 void* tpool_start_thread(void* args) {
-  struct TPool* tp = (struct TPool*) args;
+  struct TPool* tp = args;
   while (1) {
     struct Task* t = queue_dequeue(tp->task_queue);
-    if (t == TERIMANTION_TASK) break;
+    if (t == TERMINATION_TASK) break;
     t->function(t->args);
     pthread_mutex_lock(&tp->mutex);
     t->is_finished = true;
-    pthread_cond_broadcast(&tp->cond);
+    pthread_cond_signal(&tp->cond);
     pthread_mutex_unlock(&tp->mutex);
   }
   return NULL;
@@ -39,7 +40,7 @@ void* tpool_start_thread(void* args) {
 void tpool_free(struct TPool* tp) {
   if (tp->task_queue) {
     if (tp->threads) {
-      for (int i = 0; i < tp->n_threads; ++i) { queue_enqueue(tp->task_queue, TERIMANTION_TASK); }
+      for (int i = 0; i < tp->n_threads; ++i) { queue_enqueue(tp->task_queue, TERMINATION_TASK); }
       for (int i = 0; i < tp->n_threads; ++i) { pthread_join(tp->threads[i], NULL); }
       free(tp->threads);
     }
