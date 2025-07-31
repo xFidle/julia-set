@@ -23,8 +23,10 @@ uint8_t* pixel_array_new(void);
 bool app_init(struct App* a) {
   a->pixel_array = pixel_array_new();
   a->julia_set_args = julia_set_args_new();
-  a->tpool = tpool_new(&(struct TPoolConfig) {.n_threads = SDL_GetNumLogicalCPUCores(),
-                                              .queue_size = SDL_GetNumLogicalCPUCores()});
+  a->tpool = tpool_new(&(struct TPoolConfig) {
+          .n_threads = SDL_GetNumLogicalCPUCores(),
+          .queue_size = SDL_GetNumLogicalCPUCores(),
+  });
   if (a->pixel_array == NULL || a->julia_set_args == NULL || a->tpool == NULL) {
     fprintf(stderr, "Couldn't allocate memory for needed structs (tpool, pixel_array, julia_set_args)");
     return false;
@@ -157,10 +159,12 @@ struct JuliaSetThreadArgs {
 void init_julia_set_tasks(struct App* a, struct Task tasks[], struct JuliaSetThreadArgs args[], int n_tasks) {
   int rows_per_thread = HEIGHT / n_tasks;
   for (int i = 0; i < n_tasks; ++i) {
-    args[i] = (struct JuliaSetThreadArgs) {.julia_set_args = a->julia_set_args,
-                                           .pixel_array = a->pixel_array,
-                                           .first_row = i * rows_per_thread,
-                                           .last_row = (i == n_tasks - 1) ? HEIGHT : (i + 1) * rows_per_thread};
+    args[i] = (struct JuliaSetThreadArgs) {
+            .julia_set_args = a->julia_set_args,
+            .pixel_array = a->pixel_array,
+            .first_row = i * rows_per_thread,
+            .last_row = (i == n_tasks - 1) ? HEIGHT : (i + 1) * rows_per_thread,
+    };
     tasks[i].args = (void*) &args[i];
     tasks[i].function = &julia_set;
     tasks[i].is_finished = false;
