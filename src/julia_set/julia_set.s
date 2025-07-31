@@ -8,9 +8,9 @@ section .text
 global julia_set
 
 julia_set:
+    push            rbx
     push            rbp
     mov             rbp,        rsp
-    push            rbx
     and             rsp,        -32
 
 extract_thread_args:
@@ -175,7 +175,7 @@ next_pixels:
     jge             pop_from_stack
 
 end:
-    pop         rbx
-    mov         rsp, rbp
-    pop         rbp
+    mov             rsp,        rbp
+    pop             rbp
+    pop             rbx
     ret
