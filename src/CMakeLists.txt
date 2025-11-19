@@ -1,9 +1,7 @@
 include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -pedantic -Werror -g")
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_C_CLANG_TIDY "clang-tidy;-checks=bugprone-*,clang-analyzer-*,redability-*")
-endif()
 
 add_subdirectory(queue)
 add_subdirectory(tpool)

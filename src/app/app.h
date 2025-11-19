@@ -1,5 +1,5 @@
-#ifndef _APP_H
-#define _APP_H
+#ifndef APP_H
+#define APP_H
 
 #include "julia_set.h"
 #include "tpool.h"
