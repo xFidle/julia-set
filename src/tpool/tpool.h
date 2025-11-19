@@ -1,5 +1,5 @@
-#ifndef _TPOOL_H
-#define _TPOOL_H
+#ifndef TPOOL_H
+#define TPOOL_H
 
 #include "queue.h"
 #include <pthread.h>

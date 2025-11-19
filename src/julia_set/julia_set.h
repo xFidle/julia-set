@@ -1,5 +1,5 @@
-#ifndef _JULIASET_H
-#define _JULIASET_H
+#ifndef JULIASET_H
+#define JULIASET_H
 
 struct JuliaSetArgs {
   int width;

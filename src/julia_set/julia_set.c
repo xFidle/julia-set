@@ -5,7 +5,9 @@
 
 struct JuliaSetArgs* julia_set_args_new(void) {
   struct JuliaSetArgs* args = malloc(sizeof(struct JuliaSetArgs));
-  if (args == NULL) { return NULL; }
+  if (args == NULL) {
+    return NULL;
+  }
   julia_set_args_default(args);
   return args;
 }

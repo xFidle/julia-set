@@ -61,12 +61,24 @@ void app_run(struct App* a) {
 }
 
 void app_free(struct App* a) {
-  if (a->window != NULL) { SDL_DestroyWindow(a->window); }
-  if (a->renderer != NULL) { SDL_DestroyRenderer(a->renderer); }
-  if (a->texture != NULL) { SDL_DestroyTexture(a->texture); }
-  if (a->pixel_array != NULL) { free(a->pixel_array); }
-  if (a->julia_set_args != NULL) { free(a->julia_set_args); }
-  if (a->tpool != NULL) { tpool_free(a->tpool); }
+  if (a->window != NULL) {
+    SDL_DestroyWindow(a->window);
+  }
+  if (a->renderer != NULL) {
+    SDL_DestroyRenderer(a->renderer);
+  }
+  if (a->texture != NULL) {
+    SDL_DestroyTexture(a->texture);
+  }
+  if (a->pixel_array != NULL) {
+    free(a->pixel_array);
+  }
+  if (a->julia_set_args != NULL) {
+    free(a->julia_set_args);
+  }
+  if (a->tpool != NULL) {
+    tpool_free(a->tpool);
+  }
   SDL_Quit();
 }
 
@@ -85,7 +97,9 @@ void app_events(struct App* a) {
         break;
     }
   }
-  if (is_update_needed) { app_set_new_texture(a); }
+  if (is_update_needed) {
+    app_set_new_texture(a);
+  }
 }
 
 void app_handle_key_event(struct App* a, bool* is_update_needed) {
