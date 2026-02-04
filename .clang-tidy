@@ -2,5 +2,4 @@ Checks: >
   clang-analyzer-*,
   bugprone-*,
   performance-*,
-  readability-*
 
