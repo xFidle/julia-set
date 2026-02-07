@@ -10,6 +10,10 @@ computations are performed only on CPU. Project was developled under Linux OS.
 
 ## Demo
 
+https://github.com/user-attachments/assets/54b41dbb-d75b-4273-a780-d5b80ba74497
+
+https://github.com/user-attachments/assets/6a25990e-43e3-4192-ad94-73b94abb5a42
+
 ## Requirements
 Required tools:
 - x86_64 CPU with AVX2 support
