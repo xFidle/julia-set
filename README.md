@@ -6,7 +6,8 @@ computations by processing four double-precision pixels simultaneously in
 256-bit vectors. Moreover, a custom threadpool is used to utilize all of the
 CPU's power. The generated pixel buffer is rendered using
 [SDL3](https://github.com/libsdl-org/SDL). There is no GPU acceleration - 
-computations are performed only on CPU. Project was developled under Linux OS.
+computations are performed only on CPU. The project was developed on 
+Linux so it is recommended to test it on the same environment.
 
 ## Demo
 
