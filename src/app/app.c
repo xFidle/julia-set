@@ -1,4 +1,6 @@
 #include "app.h"
+#include "SDL3/SDL_error.h"
+#include "SDL3/SDL_render.h"
 #include "constants.h"
 #include "counter.h"
 #include "julia_set.h"
@@ -40,8 +42,16 @@ bool app_init(struct App* a) {
     fprintf(stderr, "Couldn't initialize window or renderer: %s", SDL_GetError());
     return false;
   }
-  if (!SDL_SetRenderVSync(a->renderer, 1)) {
+  if (!SDL_SetRenderVSync(a->renderer, SDL_RENDERER_VSYNC_ADAPTIVE)) {
     fprintf(stderr, "Couldn't set VSync: %s", SDL_GetError());
+    return false;
+  }
+  if (!SDL_SetRenderDrawColor(a->renderer, RENDERER_COLOR)) {
+    fprintf(stderr, "Couldn't set renderer color: %s", SDL_GetError());
+    return false;
+  };
+  if (!SDL_SetRenderScale(a->renderer, RENDERER_SCALE)) {
+    fprintf(stderr, "Couldn't set renderer scale: %s", SDL_GetError());
     return false;
   }
   a->texture = SDL_CreateTexture(a->renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
@@ -59,10 +69,8 @@ void app_run(struct App* a) {
   app_set_new_texture(a);
   while (a->is_running) {
     app_events(a);
+    fps_counter_update(&a->counter);
     app_draw(a);
-    if (fps_counter_update(&a->counter)) {
-      app_refresh_counter(a);
-    }
   }
 }
 
@@ -157,13 +165,8 @@ void app_handle_key_event(struct App* a, bool* is_update_needed) {
 void app_draw(struct App* a) {
   SDL_RenderClear(a->renderer);
   SDL_RenderTexture(a->renderer, a->texture, NULL, NULL);
+  SDL_RenderDebugTextFormat(a->renderer, 5.0f, 5.0f, "FPS: %d", a->counter.fps);
   SDL_RenderPresent(a->renderer);
-}
-
-void app_refresh_counter(struct App* a) {
-  char buffer[256];
-  sprintf(buffer, "%s (FPS: %d)", WINDOW_TITLE, a->counter.fps);
-  SDL_SetWindowTitle(a->window, buffer);
 }
 
 uint8_t* pixel_array_new(void) {

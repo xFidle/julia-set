@@ -4,6 +4,8 @@
 #define WINDOW_TITLE "Interactive Julia Set"
 #define WIDTH 1080
 #define HEIGHT 1080
+#define RENDERER_COLOR 0xFF, 0x00, 0x00, 0xFF
+#define RENDERER_SCALE 2.0f, 2.0f
 #define START_REAL_CENTRE 0.0
 #define START_IMAG_CENTRE 0.0
 #define START_C_REAL -0.7269
