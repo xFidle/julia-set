@@ -1,5 +1,5 @@
 find_package(Threads REQUIRED)
-set(AppSources app.c)
+set(AppSources app.c counter.c)
 add_library(AppLib STATIC ${AppSources})
 target_link_libraries(AppLib PUBLIC JuliaSetLib TPoolLib SDL3::SDL3)
 target_include_directories(AppLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

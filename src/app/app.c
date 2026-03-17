@@ -1,5 +1,6 @@
 #include "app.h"
 #include "constants.h"
+#include "counter.h"
 #include "julia_set.h"
 #include "queue.h"
 #include "tpool.h"
@@ -17,18 +18,18 @@
 void app_events(struct App* a);
 void app_handle_key_event(struct App* a, bool* is_update_needed);
 void app_draw(struct App* a);
+void app_refresh_counter(struct App* a);
 bool app_set_new_texture(struct App* a);
 uint8_t* pixel_array_new(void);
 
 bool app_init(struct App* a) {
   a->pixel_array = pixel_array_new();
-  a->julia_set_args = julia_set_args_new();
   a->tpool = tpool_new(&(struct TPoolConfig) {
           .n_threads = SDL_GetNumLogicalCPUCores(),
           .queue_size = SDL_GetNumLogicalCPUCores(),
   });
-  if (a->pixel_array == NULL || a->julia_set_args == NULL || a->tpool == NULL) {
-    fprintf(stderr, "Couldn't allocate memory for needed structs (tpool, pixel_array, julia_set_args)");
+  if (a->pixel_array == NULL || a->tpool == NULL) {
+    fprintf(stderr, "Couldn't allocate memory for needed structs (tpool, pixel_array");
     return false;
   }
   if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -39,7 +40,7 @@ bool app_init(struct App* a) {
     fprintf(stderr, "Couldn't initialize window or renderer: %s", SDL_GetError());
     return false;
   }
-  if (!SDL_SetRenderVSync(a->renderer, SDL_RENDERER_VSYNC_ADAPTIVE)) {
+  if (!SDL_SetRenderVSync(a->renderer, 1)) {
     fprintf(stderr, "Couldn't set VSync: %s", SDL_GetError());
     return false;
   }
@@ -48,6 +49,8 @@ bool app_init(struct App* a) {
     fprintf(stderr, "Couldn't create SDL3 texture: %s", SDL_GetError());
     return false;
   }
+  julia_set_args_init(&a->julia_set_args);
+  fps_counter_init(&a->counter);
   a->is_running = true;
   return true;
 }
@@ -57,6 +60,9 @@ void app_run(struct App* a) {
   while (a->is_running) {
     app_events(a);
     app_draw(a);
+    if (fps_counter_update(&a->counter)) {
+      app_refresh_counter(a);
+    }
   }
 }
 
@@ -72,9 +78,6 @@ void app_free(struct App* a) {
   }
   if (a->pixel_array != NULL) {
     free(a->pixel_array);
-  }
-  if (a->julia_set_args != NULL) {
-    free(a->julia_set_args);
   }
   if (a->tpool != NULL) {
     tpool_free(a->tpool);
@@ -111,40 +114,40 @@ void app_handle_key_event(struct App* a, bool* is_update_needed) {
       break;
     case SDLK_UP:
     case SDLK_K:
-      a->julia_set_args->c_real += CHANGE_PARAM_STEP;
+      a->julia_set_args.c_real += CHANGE_PARAM_STEP;
       break;
     case SDLK_DOWN:
     case SDLK_J:
-      a->julia_set_args->c_real -= CHANGE_PARAM_STEP;
+      a->julia_set_args.c_real -= CHANGE_PARAM_STEP;
       break;
     case SDLK_RIGHT:
     case SDLK_L:
-      a->julia_set_args->c_imag += CHANGE_PARAM_STEP;
+      a->julia_set_args.c_imag += CHANGE_PARAM_STEP;
       break;
     case SDLK_LEFT:
     case SDLK_H:
-      a->julia_set_args->c_imag -= CHANGE_PARAM_STEP;
+      a->julia_set_args.c_imag -= CHANGE_PARAM_STEP;
       break;
     case SDLK_D:
-      a->julia_set_args->real_centre += CHANGE_PAN_STEP * a->julia_set_args->zoom;
+      a->julia_set_args.real_centre += CHANGE_PAN_STEP * a->julia_set_args.zoom;
       break;
     case SDLK_A:
-      a->julia_set_args->real_centre -= CHANGE_PAN_STEP * a->julia_set_args->zoom;
+      a->julia_set_args.real_centre -= CHANGE_PAN_STEP * a->julia_set_args.zoom;
       break;
     case SDLK_W:
-      a->julia_set_args->imag_centre += CHANGE_PAN_STEP * a->julia_set_args->zoom;
+      a->julia_set_args.imag_centre += CHANGE_PAN_STEP * a->julia_set_args.zoom;
       break;
     case SDLK_S:
-      a->julia_set_args->imag_centre -= CHANGE_PAN_STEP * a->julia_set_args->zoom;
+      a->julia_set_args.imag_centre -= CHANGE_PAN_STEP * a->julia_set_args.zoom;
       break;
     case SDLK_Z:
-      a->julia_set_args->zoom *= ZOOM_IN_FACTOR;
+      a->julia_set_args.zoom *= ZOOM_IN_FACTOR;
       break;
     case SDLK_X:
-      a->julia_set_args->zoom *= ZOOM_OUT_FACTOR;
+      a->julia_set_args.zoom *= ZOOM_OUT_FACTOR;
       break;
     case SDLK_R:
-      julia_set_args_default(a->julia_set_args);
+      julia_set_args_default(&a->julia_set_args);
       break;
     default:
       break;
@@ -155,6 +158,12 @@ void app_draw(struct App* a) {
   SDL_RenderClear(a->renderer);
   SDL_RenderTexture(a->renderer, a->texture, NULL, NULL);
   SDL_RenderPresent(a->renderer);
+}
+
+void app_refresh_counter(struct App* a) {
+  char buffer[256];
+  sprintf(buffer, "%s (FPS: %d)", WINDOW_TITLE, a->counter.fps);
+  SDL_SetWindowTitle(a->window, buffer);
 }
 
 uint8_t* pixel_array_new(void) {
@@ -174,7 +183,7 @@ void init_julia_set_tasks(struct App* a, struct Task tasks[], struct JuliaSetThr
   int rows_per_thread = HEIGHT / n_tasks;
   for (int i = 0; i < n_tasks; ++i) {
     args[i] = (struct JuliaSetThreadArgs) {
-            .julia_set_args = a->julia_set_args,
+            .julia_set_args = &a->julia_set_args,
             .pixel_array = a->pixel_array,
             .first_row = i * rows_per_thread,
             .last_row = (i == n_tasks - 1) ? HEIGHT : (i + 1) * rows_per_thread,

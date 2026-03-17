@@ -1,15 +1,9 @@
 #include "julia_set.h"
 #include "constants.h"
 
-#include <stdlib.h>
 
-struct JuliaSetArgs* julia_set_args_new(void) {
-  struct JuliaSetArgs* args = malloc(sizeof(struct JuliaSetArgs));
-  if (args == NULL) {
-    return NULL;
-  }
+void julia_set_args_init(struct JuliaSetArgs* args) {
   julia_set_args_default(args);
-  return args;
 }
 
 void julia_set_args_default(struct JuliaSetArgs* args) {

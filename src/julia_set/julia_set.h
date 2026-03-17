@@ -12,7 +12,7 @@ struct JuliaSetArgs {
   double radius;
 };
 
-struct JuliaSetArgs* julia_set_args_new(void);
+void julia_set_args_init(struct JuliaSetArgs* args);
 void julia_set_args_default(struct JuliaSetArgs* args);
 extern void* julia_set(void* julia_set_thread_args);
 
